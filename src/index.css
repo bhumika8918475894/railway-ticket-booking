@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+
+  header,
+  footer,
+  nav,
+  .print\:hidden {
+    display: none !important;
+  }
+}

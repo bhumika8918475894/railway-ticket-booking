@@ -1,0 +1,163 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              String            @id @default(uuid())
+  name            String
+  email           String            @unique
+  phone           String            @unique
+  passwordHash    String
+  role            String            @default("USER") // "USER" | "ADMIN"
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  bookings        Booking[]
+  savedPassengers SavedPassenger[]
+}
+
+model SavedPassenger {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName        String
+  age             Int
+  gender          String
+  berthPreference String   @default("No Preference")
+  nationality     String   @default("Indian")
+  createdAt       DateTime @default(now())
+}
+
+model Station {
+  id             String       @id @default(uuid())
+  code           String       @unique
+  name           String
+  city           String
+  state          String
+  zone           String       @default("IR")
+  originTrains   Train[]      @relation("SourceStation")
+  destTrains     Train[]      @relation("DestinationStation")
+  routes         TrainRoute[]
+  originBookings Booking[]    @relation("BookingSourceStation")
+  destBookings   Booking[]    @relation("BookingDestStation")
+}
+
+model Train {
+  id                   String       @id @default(uuid())
+  number               String       @unique
+  name                 String
+  type                 String       // Rajdhani, Vande Bharat, Shatabdi, Superfast, Express
+  sourceStationId      String
+  sourceStation        Station      @relation("SourceStation", fields: [sourceStationId], references: [id])
+  destinationStationId String
+  destinationStation   Station      @relation("DestinationStation", fields: [destinationStationId], references: [id])
+  departureTime        String       // HH:mm
+  arrivalTime          String       // HH:mm
+  durationHours        Float
+  runsOnDays           String       // "Mon,Tue,Wed,Thu,Fri,Sat,Sun"
+  classesAvailable     String       // "1A,2A,3A,SL,CC,EC"
+  baseFare             Float        @default(350.0)
+  isActive             Boolean      @default(true)
+  createdAt            DateTime     @default(now())
+  routes               TrainRoute[]
+  coaches              Coach[]
+  bookings             Booking[]
+}
+
+model TrainRoute {
+  id            String   @id @default(uuid())
+  trainId       String
+  train         Train    @relation(fields: [trainId], references: [id], onDelete: Cascade)
+  stationId     String
+  station       Station  @relation(fields: [stationId], references: [id])
+  stopNumber    Int
+  arrivalTime   String   // HH:mm
+  departureTime String   // HH:mm
+  distanceKm    Int
+  dayNumber     Int      @default(1)
+  haltMinutes   Int      @default(2)
+
+  @@unique([trainId, stopNumber])
+}
+
+model Coach {
+  id          String   @id @default(uuid())
+  trainId     String
+  train       Train    @relation(fields: [trainId], references: [id], onDelete: Cascade)
+  coachCode   String   // e.g. B1, B2, A1, H1, S1, C1
+  coachType   String   // 1A, 2A, 3A, SL, CC, EC
+  totalSeats  Int      @default(64)
+  seats       Seat[]
+
+  @@unique([trainId, coachCode])
+}
+
+model Seat {
+  id               String             @id @default(uuid())
+  coachId          String
+  coach            Coach              @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  seatNumber       Int
+  berthType        String             // Lower, Middle, Upper, Side Lower, Side Upper, Window, Aisle
+  isAvailable      Boolean            @default(true)
+  bookingPassenger BookingPassenger[]
+
+  @@unique([coachId, seatNumber])
+}
+
+model Booking {
+  id                   String             @id @default(uuid())
+  pnr                  String             @unique
+  bookingReference     String             @unique
+  userId               String
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trainId              String
+  train                Train              @relation(fields: [trainId], references: [id])
+  sourceStationId      String
+  sourceStation        Station            @relation("BookingSourceStation", fields: [sourceStationId], references: [id])
+  destinationStationId String
+  destinationStation   Station            @relation("BookingDestStation", fields: [destinationStationId], references: [id])
+  journeyDate          String             // YYYY-MM-DD
+  travelClass          String             // 1A, 2A, 3A, SL, CC, EC
+  totalFare            Float
+  status               String             @default("CONFIRMED") // CONFIRMED, RAC, WAITING_LIST, CANCELLED
+  cancellationRefund   Float?
+  cancelledAt          DateTime?
+  cancellationReason   String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  passengers           BookingPassenger[]
+  payment              Payment?
+}
+
+model BookingPassenger {
+  id              String   @id @default(uuid())
+  bookingId       String
+  booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  passengerName   String
+  age             Int
+  gender          String
+  berthPreference String   @default("No Preference")
+  nationality     String   @default("Indian")
+  coachCode       String
+  seatNumber      Int
+  berthType       String
+  seatId          String?
+  seat            Seat?    @relation(fields: [seatId], references: [id])
+  status          String   @default("CONFIRMED")
+}
+
+model Payment {
+  id             String   @id @default(uuid())
+  bookingId      String   @unique
+  booking        Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  transactionId  String   @unique
+  amount         Float
+  paymentMethod  String   // UPI, DEBIT_CARD, CREDIT_CARD, NET_BANKING
+  paymentGateway String   @default("RailEase Pay (Demo)")
+  status         String   @default("SUCCESS") // SUCCESS, FAILED, REFUNDED
+  paidAt         DateTime @default(now())
+}

@@ -1,0 +1,6 @@
+{
+  "name": "RailEase - Indian Railway Booking",
+  "description": "Modern full-stack Indian railway ticket booking platform featuring train search, real-time availability, interactive seat layout selection, PNR tracking, booking management, and admin dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
